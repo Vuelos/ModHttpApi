@@ -5,13 +5,23 @@
 [worldserver]
 
 ########################################
-# My module configuration
+# HttpApi module configuration
 ########################################
 #
-#    MyModule.Enable
-#        Description: Enable my module and print "Hello World" message at server start
-#        Default:     0 - Disabled
-#                     1 - Enabled
+#    HttpApi.Enable
+#        Description: Enable the HTTP API server
+#        Default:     1 - Enabled
+#                      0 - Disabled
+#
+#    HttpApi.Port
+#        Description: Port the HTTP API server listens on
+#        Default:     8080
+#
+#    HttpApi.BindAddress
+#        Description: IP address to bind the HTTP API server to
+#        Default:     0.0.0.0 (all interfaces)
 #
 
-MyModule.Enable = 1
+HttpApi.Enable = 1
+HttpApi.Port = 8080
+HttpApi.BindAddress = 0.0.0.0

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 
 info:
-  title: TrinityCore HTTP API
+  title: AzerothCore HTTP API
   description: |
     REST interface exposed by the embedded `HttpServer` module.
     All write operations (POST / DELETE) must be called from a trusted
@@ -204,6 +204,251 @@ components:
         despawned:  { type: boolean }
         set:        { type: boolean }
 
+    PlayerStats:
+      type: object
+      properties:
+        level:        { type: integer }
+        experience:
+          type: object
+          properties:
+            current:    { type: integer }
+            next_level: { type: integer }
+        attributes:
+          type: object
+          properties:
+            strength:  { type: integer }
+            agility:   { type: integer }
+            stamina:   { type: integer }
+            intellect: { type: integer }
+            spirit:    { type: integer }
+        health:
+          type: object
+          properties:
+            current: { type: integer }
+            max:     { type: integer }
+        power:
+          type: object
+          properties:
+            mana:        { $ref: '#/components/schemas/PowerPair' }
+            rage:        { $ref: '#/components/schemas/PowerPair' }
+            energy:      { $ref: '#/components/schemas/PowerPair' }
+            focus:       { $ref: '#/components/schemas/PowerPair' }
+            happiness:   { $ref: '#/components/schemas/PowerPair' }
+            runes:       { $ref: '#/components/schemas/PowerPair' }
+            runic_power: { $ref: '#/components/schemas/PowerPair' }
+        combat:
+          type: object
+          properties:
+            attack_power:        { type: integer }
+            ranged_attack_power:  { type: integer }
+            spell_power:         { type: integer }
+            critical_chance:
+              type: object
+              properties:
+                melee:  { type: number, format: float }
+                ranged: { type: number, format: float }
+                spell:  { type: number, format: float }
+            hit_chance:
+              type: object
+              properties:
+                melee: { type: number, format: float }
+                spell: { type: number, format: float }
+        resistances:
+          $ref: '#/components/schemas/Resistances'
+        status:
+          $ref: '#/components/schemas/PlayerStatus'
+        average_item_level: { type: number, format: float }
+
+    PowerPair:
+      type: object
+      properties:
+        current: { type: integer }
+        max:     { type: integer }
+
+    Resistances:
+      type: object
+      properties:
+        armor:  { type: integer }
+        holy:   { type: integer }
+        fire:   { type: integer }
+        nature: { type: integer }
+        frost:  { type: integer }
+        shadow: { type: integer }
+        arcane: { type: integer }
+
+    PlayerStatus:
+      type: object
+      properties:
+        alive:           { type: boolean }
+        in_combat:       { type: boolean }
+        resting:         { type: boolean }
+        ghost:           { type: boolean }
+        player_vs_player:{ type: boolean }
+        away:            { type: boolean }
+        dnd:             { type: boolean }
+        gm:              { type: boolean }
+
+    PlayerSkills:
+      type: object
+      properties:
+        passive_skills:
+          type: array
+          items: { $ref: '#/components/schemas/SkillInfo' }
+        talents:
+          $ref: '#/components/schemas/TalentInfo'
+        castable_spells:
+          type: array
+          items: { $ref: '#/components/schemas/SpellInfo' }
+        spell_count: { type: integer }
+
+    SkillInfo:
+      type: object
+      properties:
+        skill_id:        { type: integer }
+        skill_step:      { type: integer }
+        current_value:   { type: integer }
+        max_value:       { type: integer }
+        pure_value:      { type: integer }
+        permanent_bonus: { type: integer }
+        temporary_bonus: { type: integer }
+        name:            { type: string }
+
+    TalentInfo:
+      type: object
+      properties:
+        active_spec:  { type: integer }
+        specs_count:  { type: integer }
+        talent_points:
+          type: object
+          properties:
+            available: { type: integer }
+            used:      { type: integer }
+            total:     { type: integer }
+
+    SpellInfo:
+      type: object
+      properties:
+        spell_id:  { type: integer }
+        name:      { type: string }
+        rank:      { type: string }
+        school:    { type: integer }
+        cast_time: { type: integer }
+        cooldown:  { type: integer }
+        range:     { type: number, format: float }
+
+    PlayerQuests:
+      type: object
+      properties:
+        active_quests:
+          type: array
+          items: { $ref: '#/components/schemas/QuestData' }
+        completed_quests:
+          type: array
+          items: { $ref: '#/components/schemas/QuestData' }
+        active_count:    { type: integer }
+        completed_count: { type: integer }
+
+    QuestData:
+      type: object
+      properties:
+        quest_id:          { type: integer }
+        title:             { type: string }
+        description:       { type: string }
+        level:             { type: integer }
+        min_level:         { type: integer }
+        quest_type:        { type: integer }
+        suggested_players: { type: integer }
+        time_limit:        { type: integer }
+        is_daily:          { type: boolean }
+        is_weekly:         { type: boolean }
+        is_repeatable:     { type: boolean }
+        status:            { type: integer }
+        item_objectives:
+          type: array
+          items:
+            type: object
+            properties:
+              item_id:        { type: integer }
+              required_count: { type: integer }
+              current_count:  { type: integer }
+        creature_objectives:
+          type: array
+          items:
+            type: object
+            properties:
+              npc_or_go_id:   { type: integer }
+              required_count: { type: integer }
+              current_count:  { type: integer }
+        explored:       { type: boolean }
+        timer:          { type: integer }
+        ready_to_turn_in: { type: boolean }
+
+    PlayerEquipment:
+      type: object
+      additionalProperties:
+        nullable: true
+        oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/ItemData'
+
+    ItemData:
+      type: object
+      properties:
+        entry:           { type: integer }
+        count:           { type: integer }
+        name:            { type: string }
+        quality:         { type: integer }
+        item_level:      { type: integer }
+        required_level:  { type: integer }
+        class:           { type: integer }
+        subclass:        { type: integer }
+        inventory_type:  { type: integer }
+        durability:      { type: integer }
+        max_durability:  { type: integer }
+        resistances:     { $ref: '#/components/schemas/Resistances' }
+        item_set:        { type: integer }
+        bonding:         { type: integer }
+        stack_size:      { type: integer }
+        sell_price:      { type: integer }
+        buy_price:       { type: integer }
+        stats:
+          type: array
+          items:
+            type: object
+            properties:
+              type:  { type: integer }
+              value: { type: integer }
+        weapon_data:
+          type: object
+          properties:
+            delay:   { type: integer }
+            dps:     { type: number, format: float }
+            damages:
+              type: array
+              items:
+                type: object
+                properties:
+                  min:  { type: number, format: float }
+                  max:  { type: number, format: float }
+                  type: { type: integer }
+        sockets:
+          type: array
+          items:
+            type: object
+            properties:
+              color:   { type: integer }
+              content: { type: integer }
+        socket_bonus: { type: integer }
+        spells:
+          type: array
+          items:
+            type: object
+            properties:
+              spell_id: { type: integer }
+              trigger:  { type: integer }
+              charges:  { type: integer }
+              cooldown: { type: integer }
+
   responses:
     400:
       description: Bad request – missing or invalid parameter
@@ -332,6 +577,86 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Player' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/stats:
+    get:
+      operationId: getPlayerStats
+      summary: Fetch detailed stats for an online player
+      tags: [Players]
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+          example: Arthas
+      responses:
+        '200':
+          description: Player stats
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerStats' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/skills:
+    get:
+      operationId: getPlayerSkills
+      summary: Fetch skills, talents, and spells for an online player
+      tags: [Players]
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+          example: Arthas
+      responses:
+        '200':
+          description: Player skills and spells
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerSkills' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/quests:
+    get:
+      operationId: getPlayerQuests
+      summary: Fetch quest data for an online player
+      tags: [Players]
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+          example: Arthas
+      responses:
+        '200':
+          description: Player quests
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerQuests' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/equipment:
+    get:
+      operationId: getPlayerEquipment
+      summary: Fetch equipment data for an online player
+      tags: [Players]
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+          example: Arthas
+      responses:
+        '200':
+          description: Player equipment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerEquipment' }
         '400': { $ref: '#/components/responses/400' }
         '404': { $ref: '#/components/responses/404' }
 
