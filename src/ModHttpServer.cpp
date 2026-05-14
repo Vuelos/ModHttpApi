@@ -1,5 +1,5 @@
 #include "ScriptMgr.h"
-#include "HttpServer.h"
+#include "HttpServer/HttpServer.h"
 
 class HttpApiWorldScript : public WorldScript
 {
@@ -15,7 +15,14 @@ public:
     }
 };
 
-void AddModHttpApiScripts()
+// Module entry point — registers all scripts
+void AddModScripts()
 {
     new HttpApiWorldScript();
+}
+
+// CMake compat forwarder
+void AddModHttpServerScripts()
+{
+    AddModScripts();
 }
