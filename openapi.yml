@@ -3,10 +3,13 @@ openapi: 3.0.3
 info:
   title: AzerothCore HTTP API
   description: |
-    REST interface exposed by the embedded `HttpServer` module.
-    All write operations (POST / DELETE) must be called from a trusted
-    internal network; no authentication middleware is included.
-  version: 1.0.0
+    REST interface exposed by the embedded `ModHttpApi` module.
+    Designed as a DM companion — all server, player, NPC, creature,
+    game object, and world control actions available over HTTP.
+
+    All write operations (POST / DELETE) should only be exposed on a
+    trusted internal network; no authentication middleware is included.
+  version: 2.0.0
   contact:
     name: Server Administration
 
@@ -28,32 +31,16 @@ components:
           type: string
           example: player not found
 
-    Player:
+    BoolResult:
       type: object
-      required: [name, guid, mapId, x, y, z, orientation, level, race, class,
-                 gender, health, maxHealth, powerType, power, maxPower,
-                 zoneId, areaId, isGM, guildId]
       properties:
-        name:        { type: string,  example: Arthas }
-        guid:        { type: string,  example: "0x000000000000002A" }
-        mapId:       { type: integer, example: 0 }
-        x:           { type: number,  format: float, example: -8949.95 }
-        y:           { type: number,  format: float, example: -132.49 }
-        z:           { type: number,  format: float, example: 83.53 }
-        orientation: { type: number,  format: float, example: 0.0 }
-        level:       { type: integer, minimum: 1, maximum: 80 }
-        race:        { type: integer, description: "ChrRaces.dbc entry" }
-        class:       { type: integer, description: "ChrClasses.dbc entry" }
-        gender:      { type: integer, enum: [0, 1] }
-        health:      { type: integer }
-        maxHealth:   { type: integer }
-        powerType:   { type: integer }
-        power:       { type: integer }
-        maxPower:    { type: integer }
-        zoneId:      { type: integer }
-        areaId:      { type: integer }
-        isGM:        { type: boolean }
-        guildId:     { type: integer }
+        sent:       { type: boolean }
+        teleported: { type: boolean }
+        kicked:     { type: boolean }
+        despawned:  { type: boolean }
+        set:        { type: boolean }
+
+    # ---------- World ----------
 
     ServerInfo:
       type: object
@@ -89,120 +76,87 @@ components:
         areaId:   { type: integer }
         areaName: { type: string,  example: "Northshire Valley" }
 
-    BroadcastRequest:
+    MapInfo:
       type: object
-      required: [message]
       properties:
-        message:
-          type: string
-          example: "Server restart in 5 minutes."
-        type:
-          type: string
-          enum: [system, say, yell]
-          default: system
-          description: |
-            - `system` – blue server notification (visible to all)
-            - `say`    – positional SAY (requires mapId/x/y/z)
-            - `yell`   – positional YELL (requires mapId/x/y/z)
-        mapId: { type: integer }
+        id:             { type: integer }
+        name:           { type: string }
+        type:           { type: integer }
+        isDungeon:      { type: boolean }
+        isRaid:         { type: boolean }
+        isBattleground: { type: boolean }
+        isArena:        { type: boolean }
+        instanceable:   { type: boolean }
+        maxPlayers:     { type: integer }
+        expansion:      { type: integer }
+
+    NearbyResult:
+      type: object
+      properties:
+        creatures:
+          type: array
+          items: { $ref: '#/components/schemas/NearbyEntity' }
+        gameobjects:
+          type: array
+          items: { $ref: '#/components/schemas/NearbyEntity' }
+        total: { type: integer }
+
+    NearbyEntity:
+      type: object
+      properties:
+        guid:  { type: string, example: "0x000000000000002A" }
+        entry: { type: integer }
+        name:  { type: string }
         x:     { type: number, format: float }
         y:     { type: number, format: float }
-        z:     { type: number, format: float }
 
-    SpawnRequest:
+    WeatherRequest:
       type: object
-      required: [entry]
+      required: [zoneId]
       properties:
-        entry:
+        zoneId:
           type: integer
-          description: Creature template ID (creature_template.entry)
-          example: 6
-        mapId:
+          example: 12
+        weatherType:
           type: integer
+          description: 0=fine, 1=rain, 2=snow, 3=storm, 86=thunder, 90=black rain
           default: 0
-        x:     { type: number, format: float, default: 0.0 }
-        y:     { type: number, format: float, default: 0.0 }
-        z:
+          example: 3
+        intensity:
           type: number
           format: float
-          default: 0.0
-          description: Pass 0 to auto-resolve terrain height.
-        orientation: { type: number, format: float, default: 0.0 }
-        despawnSecs:
-          type: integer
-          default: 0
-          description: Seconds until automatic despawn; 0 = permanent.
-        name:
-          type: string
-          description: Optional override for the creature display name.
+          description: 0.0 (light) to 1.0 (heavy)
+          default: 0.5
+          example: 0.8
 
-    SpawnResult:
-      type: object
-      properties:
-        guid:  { type: string }
-        entry: { type: integer }
-        mapId: { type: integer }
-        x:     { type: number, format: float }
-        y:     { type: number, format: float }
-        z:     { type: number, format: float }
+    # ---------- Players ----------
 
-    TeleportRequest:
+    Player:
       type: object
-      required: [name, mapId, x, y, z]
+      required: [name, guid, mapId, x, y, z, orientation, level, race, class,
+                 gender, health, maxHealth, powerType, power, maxPower,
+                 zoneId, areaId, isGM, guildId]
       properties:
-        name:        { type: string, example: Arthas }
+        name:        { type: string,  example: Arthas }
+        guid:        { type: string,  example: "0x000000000000002A" }
         mapId:       { type: integer, example: 0 }
-        x:           { type: number, format: float }
-        y:           { type: number, format: float }
-        z:           { type: number, format: float }
-        orientation: { type: number, format: float, default: 0.0 }
-
-    ItemRequest:
-      type: object
-      required: [name, itemEntry]
-      properties:
-        name:
-          type: string
-          example: Arthas
-        itemEntry:
-          type: integer
-          description: item_template.entry
-          example: 35
-        count:
-          type: integer
-          description: Positive = give, negative = remove.
-          default: 1
-          example: 5
-
-    VitalRequest:
-      type: object
-      required: [name]
-      properties:
-        name: { type: string, example: Arthas }
-        vitalType:
-          type: string
-          enum: [health, mana, rage, focus, energy, runic_power]
-          default: health
-        value:
-          type: integer
-          description: Absolute value to set. Pass -1 to restore to maximum.
-          default: -1
-
-    KickRequest:
-      type: object
-      required: [name]
-      properties:
-        name:   { type: string, example: Griefer }
-        reason: { type: string, example: "AFK farming exploit" }
-
-    BoolResult:
-      type: object
-      properties:
-        sent:       { type: boolean }
-        teleported: { type: boolean }
-        kicked:     { type: boolean }
-        despawned:  { type: boolean }
-        set:        { type: boolean }
+        x:           { type: number,  format: float, example: -8949.95 }
+        y:           { type: number,  format: float, example: -132.49 }
+        z:           { type: number,  format: float, example: 83.53 }
+        orientation: { type: number,  format: float, example: 0.0 }
+        level:       { type: integer, minimum: 1, maximum: 80 }
+        race:        { type: integer, description: "ChrRaces.dbc entry" }
+        class:       { type: integer, description: "ChrClasses.dbc entry" }
+        gender:      { type: integer, enum: [0, 1] }
+        health:      { type: integer }
+        maxHealth:   { type: integer }
+        powerType:   { type: integer }
+        power:       { type: integer }
+        maxPower:    { type: integer }
+        zoneId:      { type: integer }
+        areaId:      { type: integer }
+        isGM:        { type: boolean }
+        guildId:     { type: integer }
 
     PlayerStats:
       type: object
@@ -240,7 +194,7 @@ components:
           type: object
           properties:
             attack_power:        { type: integer }
-            ranged_attack_power:  { type: integer }
+            ranged_attack_power: { type: integer }
             spell_power:         { type: integer }
             critical_chance:
               type: object
@@ -379,8 +333,8 @@ components:
               npc_or_go_id:   { type: integer }
               required_count: { type: integer }
               current_count:  { type: integer }
-        explored:       { type: boolean }
-        timer:          { type: integer }
+        explored:         { type: boolean }
+        timer:            { type: integer }
         ready_to_turn_in: { type: boolean }
 
     PlayerEquipment:
@@ -390,6 +344,49 @@ components:
         oneOf:
           - type: 'null'
           - $ref: '#/components/schemas/ItemData'
+
+    PlayerInventory:
+      type: object
+      properties:
+        backpack:
+          type: array
+          items:
+            type: object
+            properties:
+              slot: { type: integer }
+              item: { $ref: '#/components/schemas/ItemData' }
+        bags:
+          type: array
+          items:
+            type: object
+            properties:
+              bagSlot:  { type: integer }
+              bagEntry: { type: integer }
+              bagSlots: { type: integer }
+              contents:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    slot: { type: integer }
+                    item: { $ref: '#/components/schemas/ItemData' }
+        bank:
+          type: object
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  slot: { type: integer }
+                  item: { $ref: '#/components/schemas/ItemData' }
+            bags:
+              type: array
+              items:
+                type: object
+                properties:
+                  slot: { type: integer }
+                  item: { $ref: '#/components/schemas/ItemData' }
 
     ItemData:
       type: object
@@ -449,6 +446,231 @@ components:
               charges:  { type: integer }
               cooldown: { type: integer }
 
+    # ---------- Player Management Request Schemas ----------
+
+    TeleportRequest:
+      type: object
+      required: [name, mapId, x, y, z]
+      properties:
+        name:        { type: string, example: Arthas }
+        mapId:       { type: integer, example: 0 }
+        x:           { type: number, format: float }
+        y:           { type: number, format: float }
+        z:           { type: number, format: float }
+        orientation: { type: number, format: float, default: 0.0 }
+
+    ItemRequest:
+      type: object
+      required: [name, itemEntry]
+      properties:
+        name:
+          type: string
+          example: Arthas
+        itemEntry:
+          type: integer
+          description: item_template.entry
+          example: 35
+        count:
+          type: integer
+          description: Positive = give, negative = remove.
+          default: 1
+          example: 5
+
+    VitalRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Arthas }
+        vitalType:
+          type: string
+          enum: [health, mana, rage, focus, energy, runic_power]
+          default: health
+        value:
+          type: integer
+          description: Absolute value to set. Pass -1 to restore to maximum.
+          default: -1
+
+    KickRequest:
+      type: object
+      required: [name]
+      properties:
+        name:   { type: string, example: Griefer }
+        reason: { type: string, example: "AFK farming exploit" }
+
+    GmToggleRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Arthas }
+        gm:   { type: boolean, default: true, description: true=enable, false=disable }
+
+    CooldownsResetRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: Arthas }
+
+    MorphRequest:
+      type: object
+      required: [name, displayId]
+      properties:
+        name:      { type: string, example: Arthas }
+        displayId: { type: integer, example: 12345, description: Display ID from CreatureDisplayInfo.dbc }
+
+    QuestCompleteRequest:
+      type: object
+      required: [name, questId]
+      properties:
+        name:    { type: string, example: Arthas }
+        questId: { type: integer, example: 1234 }
+
+    # ---------- Chat ----------
+
+    BroadcastRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          example: "Server restart in 5 minutes."
+        type:
+          type: string
+          enum: [system, say, yell]
+          default: system
+          description: |
+            - `system` – blue server notification (visible to all)
+            - `say`    – positional SAY (requires mapId/x/y/z)
+            - `yell`   – positional YELL (requires mapId/x/y/z)
+        mapId: { type: integer }
+        x:     { type: number, format: float }
+        y:     { type: number, format: float }
+        z:     { type: number, format: float }
+
+    # ---------- Creatures ----------
+
+    SpawnRequest:
+      type: object
+      required: [entry]
+      properties:
+        entry:
+          type: integer
+          description: Creature template ID (creature_template.entry)
+          example: 6
+        mapId:
+          type: integer
+          default: 0
+        x:     { type: number, format: float, default: 0.0 }
+        y:     { type: number, format: float, default: 0.0 }
+        z:
+          type: number
+          format: float
+          default: 0.0
+          description: Pass 0 to auto-resolve terrain height.
+        orientation: { type: number, format: float, default: 0.0 }
+        despawnSecs:
+          type: integer
+          default: 0
+          description: Seconds until automatic despawn; 0 = permanent.
+        name:
+          type: string
+          description: Optional override for the creature display name.
+
+    SpawnResult:
+      type: object
+      properties:
+        guid:     { type: string, example: "0x000000000000002A" }
+        guid_raw: { type: integer, format: int64, example: 42 }
+        entry:    { type: integer }
+        mapId:    { type: integer }
+        x:        { type: number, format: float }
+        y:        { type: number, format: float }
+        z:        { type: number, format: float }
+
+    CreatureTemplate:
+      type: object
+      properties:
+        entry:            { type: integer }
+        name:             { type: string }
+        subname:          { type: string }
+        icon:             { type: string }
+        minlevel:         { type: integer }
+        maxlevel:         { type: integer }
+        faction:          { type: integer }
+        npcflag:          { type: integer }
+        rank:             { type: integer }
+        type:             { type: integer }
+        family:           { type: integer }
+        unit_class:       { type: integer }
+        unit_flags:       { type: integer }
+        unit_flags2:      { type: integer }
+        models:
+          type: array
+          items: { type: integer }
+        speed_walk:       { type: number, format: float }
+        speed_run:        { type: number, format: float }
+        health_mod:       { type: number, format: float }
+        mana_mod:         { type: number, format: float }
+        armor_mod:        { type: number, format: float }
+        experience_mod:   { type: number, format: float }
+        lootid:           { type: integer }
+        pickpocket_loot:  { type: integer }
+        skinning_loot:    { type: integer }
+        mingold:          { type: integer }
+        maxgold:          { type: integer }
+        ai_name:          { type: string }
+        movement_type:    { type: integer }
+        racial_leader:    { type: boolean }
+        regenerates_health: { type: boolean }
+        flags_extra:      { type: integer }
+
+    NpcSayRequest:
+      type: object
+      required: [guid, text]
+      properties:
+        guid:
+          type: integer
+          format: int64
+          description: Raw 64-bit GUID of the spawned creature
+          example: 42
+        text:
+          type: string
+          description: Text to speak
+          example: "Hello, $N!"
+        type:
+          type: string
+          enum: [say, yell, emote]
+          default: say
+
+    # ---------- GameObjects ----------
+
+    GameObjectSpawnRequest:
+      type: object
+      required: [entry]
+      properties:
+        entry:
+          type: integer
+          description: GameObject template ID (gameobject_template.entry)
+          example: 1234
+        mapId:
+          type: integer
+          default: 0
+        x:     { type: number, format: float, default: 0.0 }
+        y:     { type: number, format: float, default: 0.0 }
+        z:
+          type: number
+          format: float
+          default: 0.0
+          description: Pass 0 to auto-resolve terrain height.
+        orientation: { type: number, format: float, default: 0.0 }
+        despawnSecs:
+          type: integer
+          default: 0
+          description: Seconds until automatic despawn; 0 = permanent.
+        name:
+          type: string
+
+  # ---------- Shared Responses ----------
+
   responses:
     400:
       description: Bad request – missing or invalid parameter
@@ -475,6 +697,8 @@ components:
 # Paths
 # ---------------------------------------------------------------------------
 paths:
+
+  # =================== World ===================
 
   /server:
     get:
@@ -559,6 +783,86 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ZoneInfo' }
         '400': { $ref: '#/components/responses/400' }
+
+  /maps:
+    get:
+      operationId: getMaps
+      summary: List all maps from DBC
+      tags: [World]
+      responses:
+        '200':
+          description: Array of map entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MapInfo' }
+
+  /nearby:
+    get:
+      operationId: getNearby
+      summary: List creatures and game objects near a coordinate
+      tags: [World]
+      parameters:
+        - name: map
+          in: query
+          required: true
+          schema: { type: integer }
+          example: 0
+        - name: x
+          in: query
+          required: true
+          schema: { type: number, format: float }
+          example: -8949.95
+        - name: y
+          in: query
+          required: true
+          schema: { type: number, format: float }
+          example: -132.49
+        - name: range
+          in: query
+          schema: { type: number, format: float, default: 100 }
+          description: Search radius in yards
+      responses:
+        '200':
+          description: Nearby entities
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NearbyResult' }
+
+  /weather:
+    post:
+      operationId: setWeather
+      summary: Set weather in a zone
+      tags: [World]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/WeatherRequest' }
+            examples:
+              storm:
+                summary: Storm in Elwynn Forest
+                value:
+                  zoneId: 12
+                  weatherType: 3
+                  intensity: 0.8
+      responses:
+        '200':
+          description: Weather updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  weatherSet:  { type: boolean, example: true }
+                  zoneId:      { type: integer }
+                  weatherType: { type: integer }
+                  intensity:   { type: number, format: float }
+        '400': { $ref: '#/components/responses/400' }
+        '500': { $ref: '#/components/responses/500' }
+
+  # =================== Players ===================
 
   /player:
     get:
@@ -660,6 +964,26 @@ paths:
         '400': { $ref: '#/components/responses/400' }
         '404': { $ref: '#/components/responses/404' }
 
+  /player/inventory:
+    get:
+      operationId: getPlayerInventory
+      summary: Fetch backpack, bags, and bank for an online player
+      tags: [Players]
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+          example: Arthas
+      responses:
+        '200':
+          description: Player inventory
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PlayerInventory' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
   /players:
     get:
       operationId: listPlayers
@@ -689,93 +1013,6 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/Player' }
 
-  /broadcast:
-    post:
-      operationId: broadcast
-      summary: Send a message to global or positional chat
-      tags: [Chat]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/BroadcastRequest' }
-            examples:
-              system:
-                summary: System notification
-                value: { message: "Restart in 5 minutes.", type: system }
-              say:
-                summary: SAY at coordinates
-                value:
-                  message: "Hail, adventurer!"
-                  type: say
-                  mapId: 0
-                  x: -8949.95
-                  y: -132.49
-                  z: 83.53
-      responses:
-        '200':
-          description: Message sent
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  sent: { type: boolean, example: true }
-        '400': { $ref: '#/components/responses/400' }
-        '404': { $ref: '#/components/responses/404' }
-
-  /spawn:
-    post:
-      operationId: spawnCreature
-      summary: Spawn a creature in the world
-      tags: [Creatures]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/SpawnRequest' }
-            examples:
-              murloc:
-                summary: Spawn a Murloc at Northshire
-                value:
-                  entry: 400
-                  mapId: 0
-                  x: -8945.0
-                  y: -130.0
-                  despawnSecs: 300
-      responses:
-        '200':
-          description: Creature spawned; returns its GUID and position
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/SpawnResult' }
-        '400': { $ref: '#/components/responses/400' }
-        '404': { $ref: '#/components/responses/404' }
-        '500': { $ref: '#/components/responses/500' }
-
-  /spawn/{guid}:
-    delete:
-      operationId: despawnCreature
-      summary: Despawn a creature by its low GUID
-      tags: [Creatures]
-      parameters:
-        - name: guid
-          in: path
-          required: true
-          schema: { type: integer, format: int64 }
-          example: 42
-      responses:
-        '200':
-          description: Creature despawned
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  despawned: { type: boolean, example: true }
-        '400': { $ref: '#/components/responses/400' }
-        '404': { $ref: '#/components/responses/404' }
-
   /teleport:
     post:
       operationId: teleportPlayer
@@ -786,6 +1023,10 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/TeleportRequest' }
+            examples:
+              teleport:
+                summary: Teleport to Orgrimmar
+                value: { name: Arthas, mapId: 1, x: 1629.0, y: -4411.0, z: 38.7, orientation: 0 }
       responses:
         '200':
           description: Player teleported
@@ -871,6 +1112,10 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/KickRequest' }
+            examples:
+              kick:
+                summary: Kick a player
+                value: { name: Griefer, reason: "AFK farming exploit" }
       responses:
         '200':
           description: Player kicked
@@ -883,12 +1128,332 @@ paths:
         '400': { $ref: '#/components/responses/400' }
         '404': { $ref: '#/components/responses/404' }
 
+  /player/gm:
+    post:
+      operationId: toggleGM
+      summary: Enable or disable GM mode for a player
+      tags: [Players]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GmToggleRequest' }
+            examples:
+              enable:
+                summary: Enable GM mode
+                value: { name: Arthas, gm: true }
+              disable:
+                summary: Disable GM mode
+                value: { name: Arthas, gm: false }
+      responses:
+        '200':
+          description: GM mode toggled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  gm:   { type: boolean }
+                  name: { type: string }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/cooldowns/reset:
+    post:
+      operationId: resetCooldowns
+      summary: Reset all spell cooldowns for a player
+      tags: [Players]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CooldownsResetRequest' }
+            examples:
+              reset:
+                summary: Reset cooldowns
+                value: { name: Arthas }
+      responses:
+        '200':
+          description: Cooldowns reset
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cooldownsReset: { type: boolean, example: true }
+                  name:          { type: string }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/morph:
+    post:
+      operationId: morphPlayer
+      summary: Change a player's display ID (morph)
+      tags: [Players]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MorphRequest' }
+            examples:
+              morph:
+                summary: Morph into a Night Elf
+                value: { name: Arthas, displayId: 12345 }
+      responses:
+        '200':
+          description: Player morphed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  morphed:   { type: boolean, example: true }
+                  name:      { type: string }
+                  displayId: { type: integer }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /player/quest/complete:
+    post:
+      operationId: completeQuest
+      summary: Force-complete a quest for a player
+      tags: [Players]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuestCompleteRequest' }
+            examples:
+              complete:
+                summary: Complete quest for Arthas
+                value: { name: Arthas, questId: 1234 }
+      responses:
+        '200':
+          description: Quest completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  completed: { type: boolean, example: true }
+                  questId:   { type: integer }
+                  name:      { type: string }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+        '500': { $ref: '#/components/responses/500' }
+
+  # =================== Chat ===================
+
+  /broadcast:
+    post:
+      operationId: broadcast
+      summary: Send a message to global or positional chat
+      tags: [Chat]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BroadcastRequest' }
+            examples:
+              system:
+                summary: System notification
+                value: { message: "Restart in 5 minutes.", type: system }
+              say:
+                summary: SAY at coordinates
+                value:
+                  message: "Hail, adventurer!"
+                  type: say
+                  mapId: 0
+                  x: -8949.95
+                  y: -132.49
+                  z: 83.53
+      responses:
+        '200':
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: { type: boolean, example: true }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  # =================== Creatures ===================
+
+  /spawn:
+    post:
+      operationId: spawnCreature
+      summary: Spawn a creature in the world
+      tags: [Creatures]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SpawnRequest' }
+            examples:
+              murloc:
+                summary: Spawn a Murloc at Northshire
+                value:
+                  entry: 400
+                  mapId: 0
+                  x: -8945.0
+                  y: -130.0
+                  despawnSecs: 300
+      responses:
+        '200':
+          description: Creature spawned; returns its GUID and position
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpawnResult' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+        '500': { $ref: '#/components/responses/500' }
+
+  /spawn/{guid}:
+    delete:
+      operationId: despawnCreature
+      summary: Despawn a creature by its raw 64-bit GUID
+      tags: [Creatures]
+      parameters:
+        - name: guid
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+          example: 42
+      responses:
+        '200':
+          description: Creature despawned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  despawned: { type: boolean, example: true }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  # =================== NPC ===================
+
+  /npc/{entry}:
+    get:
+      operationId: getNpcInfo
+      summary: Lookup creature template information by entry ID
+      tags: [NPC]
+      parameters:
+        - name: entry
+          in: path
+          required: true
+          schema: { type: integer }
+          example: 400
+      responses:
+        '200':
+          description: Creature template data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreatureTemplate' }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  /npc/say:
+    post:
+      operationId: npcSay
+      summary: Make a spawned creature say, yell, or emote text
+      tags: [NPC]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/NpcSayRequest' }
+            examples:
+              say:
+                summary: NPC says hello
+                value: { guid: 42, text: "Hello, $N!", type: say }
+              yell:
+                summary: NPC yells a warning
+                value: { guid: 42, text: "Intruders!", type: yell }
+              emote:
+                summary: NPC emotes
+                value: { guid: 42, text: "looks around suspiciously", type: emote }
+      responses:
+        '200':
+          description: Message spoken
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  spoken: { type: boolean, example: true }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+  # =================== GameObjects ===================
+
+  /gameobject/spawn:
+    post:
+      operationId: spawnGameObject
+      summary: Spawn a game object in the world
+      tags: [GameObjects]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GameObjectSpawnRequest' }
+            examples:
+              mailbox:
+                summary: Spawn a mailbox
+                value:
+                  entry: 1234
+                  mapId: 0
+                  x: -8945.0
+                  y: -130.0
+                  z: 82.0
+                  orientation: 1.5
+      responses:
+        '200':
+          description: GameObject spawned; returns its GUID and position
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpawnResult' }
+        '400': { $ref: '#/components/responses/400' }
+        '500': { $ref: '#/components/responses/500' }
+
+  /gameobject/spawn/{guid}:
+    delete:
+      operationId: despawnGameObject
+      summary: Despawn a game object by its raw 64-bit GUID
+      tags: [GameObjects]
+      parameters:
+        - name: guid
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+          example: 58
+      responses:
+        '200':
+          description: GameObject despawned
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  despawned: { type: boolean, example: true }
+        '400': { $ref: '#/components/responses/400' }
+        '404': { $ref: '#/components/responses/404' }
+
+# ---------------------------------------------------------------------------
+# Tags
+# ---------------------------------------------------------------------------
 tags:
   - name: World
-    description: Map, terrain, time, and server-level queries
+    description: Server state, maps, terrain, weather, and zone queries
   - name: Players
     description: Query or modify online players
   - name: Chat
     description: Send messages to the game world
   - name: Creatures
     description: Spawn and despawn NPCs / mobs
+  - name: NPC
+    description: Creature template lookup and NPC dialogue control
+  - name: GameObjects
+    description: Spawn and despawn world objects
